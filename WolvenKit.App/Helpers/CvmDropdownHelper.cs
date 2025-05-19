@@ -37,6 +37,11 @@ public abstract class CvmDropdownHelper
         "PlayerBodyPart", "Tight", "Normal", "Large", "XLarge"
     ];
 
+    private static readonly List<string> s_questHandleParentNames =
+    [
+        "path", "contact", "caller", "addressee", "briefingPath", "mappinPath"
+    ];
+    
     public static Dictionary<string, string> GetDropdownOptions(ChunkViewModel cvm)
     {
         if (cvm.Parent is not ChunkViewModel parent)
@@ -47,8 +52,7 @@ public abstract class CvmDropdownHelper
         IEnumerable<string?> ret = [];
         switch (parent.ResolvedData)
         {
-            case gameJournalPath when cvm.Name is "className" &&
-                                      (parent.Name is "path" or "contact" or "caller" or "addressee" or "briefingPath" or "mappinPath"):
+            case gameJournalPath when cvm.Name is "className" && s_questHandleParentNames.Contains(parent.Name):
                 ret = RedTypeHelper.GetExtendingClassNames(typeof(gameJournalEntry));
                 break;
             case CArray<CName> when parent is { Name: "chunkMaterials", Parent.Parent.Parent.ResolvedData: CMesh mesh }:
@@ -91,15 +95,15 @@ public abstract class CvmDropdownHelper
         {
             return false;
         }
-        // Combine type check with name checks
+        
         if (parent.ResolvedData is gameJournalPath)
         {
-            var validPaths = new List<string> { "path", "contact", "caller", "addressee", "briefingPath", "mappinPath" };
-            return cvm.Name is "className" && validPaths.Contains(parent.Name);
+            return cvm.Name is "className" && s_questHandleParentNames.Contains(parent.Name);
         }
-
+        
         return parent.ResolvedData switch
         {
+            gameJournalPath when cvm.Name is "className" && parent.Name is "path" => true,
             CArray<CName> when parent is { Name: "chunkMaterials", Parent.Parent.Parent.ResolvedData: CMesh mesh } =>
                 true,
             CArray<CName> when parent.Name is "tags" && cvm.GetRootModel() is
