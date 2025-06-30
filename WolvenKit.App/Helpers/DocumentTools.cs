@@ -94,7 +94,6 @@ public class DocumentTools
         {
             if (entry.Chunk != null)
             {
-                
                 string entryId = entry.Chunk.Id.ToString();
                 string entryPath = string.IsNullOrEmpty(currentPath) ? entryId : $"{currentPath}/{entryId}";
             
