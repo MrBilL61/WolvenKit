@@ -30,7 +30,6 @@ public class DocumentTools
     }
 
     #region journalFile
-    
     // without caching
     private static readonly List<string> s_journalJournalsByPath = [];
     
@@ -51,7 +50,6 @@ public class DocumentTools
             s_journalJournalsByPath.Order();
         }
         
-        
         s_journalJournalsByPath.AddRange(CollectProjectFiles(".journal"));
     
         List<string> journalIDs = [];
@@ -69,8 +67,6 @@ public class DocumentTools
     
         return journalIDs;
     }
-
-
 
     private List<string> GetJournalIDs(CR2WFile? cr2W)
     {
@@ -98,19 +94,14 @@ public class DocumentTools
         {
             if (entry.Chunk != null)
             {
-                // Get the entry ID
+                
                 string entryId = entry.Chunk.Id.ToString();
-            
-                // Build the full path for this entry
                 string entryPath = string.IsNullOrEmpty(currentPath) ? entryId : $"{currentPath}/{entryId}";
             
-                // Add the path to the list
                 entriesIDs.Add(entryPath);
             
-                // Check if this entry is also a container and has nested entries
                 if (entry.Chunk is gameJournalContainerEntry containerEntry)
                 {
-                    // Recursively process nested entries, passing the current path
                     ProcessJournalEntries(containerEntry.Entries, entriesIDs, entryPath);
                 }
             }
