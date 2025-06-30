@@ -63,8 +63,8 @@ public abstract class CvmDropdownHelper
             case gameJournalPath when cvm.Name is "className" && s_questHandleParentNames.Contains(parent.Name):
                 ret = RedTypeHelper.GetExtendingClassNames(typeof(gameJournalEntry));
                 break;
-            case gameJournalPath when cvm.Name is "realPath":
-                ret = documentTools.CollectProjectFiles(".journal");
+            case gameJournalPath journalPath when cvm.Name is "realPath":
+                ret = documentTools.GetAllJournalPaths(forceCacheRefresh);
                 break;
             case entISkinTargetComponent when cvm.Name is "renderingPlaneAnimationParam":
                 ret = s_appFileRenderPlane;
