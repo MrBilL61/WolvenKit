@@ -1,4 +1,4 @@
-﻿<UserControl
+<UserControl
     x:Class="WolvenKit.Views.GraphEditor.GraphEditorView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -378,6 +378,8 @@
                         </DataTemplate>
                     </local:NodeTemplateSelector.SceneEndNode>
                 </local:NodeTemplateSelector>
+
+                <!-- CommentNodeViewModel uses the NodeViewModel template below; it has empty Input/Output so no connectors are shown. -->
 
                 <DataTemplate DataType="{x:Type nodes:NodeViewModel}">
                     <nodify:Node

@@ -32,6 +32,11 @@ public static class RedReflection
         {
             var res = AddEnumType(type);
         }
+
+        foreach (var type in typeof(InternalEnums).GetNestedTypes())
+        {
+            var res = AddEnumType(type);
+        }
     }
 
     public static ExtendedTypeInfo GetTypeInfo(IRedType value)

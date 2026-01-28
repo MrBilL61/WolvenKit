@@ -303,6 +303,12 @@ public partial class GraphEditorView : UserControl
 
 
             nodifyEditor.ContextMenu.Items.Add(addMenu);
+            nodifyEditor.ContextMenu.Items.Add(new Separator());
+            nodifyEditor.ContextMenu.Items.Add(CreateMenuItem("Add Comment", "CommentText", "WolvenKitYellow", () =>
+            {
+                var comment = Source.CreateCommentNode(mousePosition);
+                SelectNodeById(comment.UniqueId);
+            }));
         }
 
         if (Source.GraphType == RedGraphType.Quest)
@@ -346,6 +352,12 @@ public partial class GraphEditorView : UserControl
             }
 
             nodifyEditor.ContextMenu.Items.Add(addMenu);
+            nodifyEditor.ContextMenu.Items.Add(new Separator());
+            nodifyEditor.ContextMenu.Items.Add(CreateMenuItem("Add Comment", "CommentText", "WolvenKitYellow", () =>
+            {
+                var comment = Source.CreateCommentNode(mousePosition);
+                SelectNodeById(comment.UniqueId);
+            }));
         }
 
         nodifyEditor.ContextMenu.Items.Add(CreateMenuItem("Arrange Items", "ViewDashboard", ArrangeNodes));
@@ -405,6 +417,15 @@ public partial class GraphEditorView : UserControl
         node.ContextMenu ??= new ContextMenu();
 
         node.ContextMenu.Items.Clear();
+
+        // Comment nodes: minimal menu (Destroy only), no sockets
+        if (nvm is CommentNodeViewModel commentNode)
+        {
+            node.ContextMenu.Items.Add(CreateMenuItem("Destroy Comment", "CloseBoxOutline", "WolvenKitRed", () => Source.RemoveNode(commentNode)));
+            node.ContextMenu.SetCurrentValue(ContextMenu.IsOpenProperty, true);
+            e.Handled = true;
+            return;
+        }
 
         if (SelectedNodes.Count > 1)
         {
@@ -908,9 +929,7 @@ public partial class GraphEditorView : UserControl
     {
         if (Source?.Nodes == null || Editor == null) return;
 
-        // Find the node with the specified ID
         var targetNode = Source.Nodes.FirstOrDefault(n => n.UniqueId == nodeId);
-
         if (targetNode != null)
         {
             // Clear current selection

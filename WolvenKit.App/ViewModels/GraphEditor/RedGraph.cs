@@ -36,6 +36,7 @@ public partial class RedGraph : IDisposable
 
     private uint _currentSceneNodeId;
     private ushort _currentQuestNodeId;
+    private uint _currentCommentNodeId;
 
     private bool _allowGraphSave = false;
 
@@ -182,6 +183,17 @@ public partial class RedGraph : IDisposable
 
     public void RemoveNode(NodeViewModel node)
     {
+        if (node is CommentNodeViewModel commentNode)
+        {
+            if (Nodes.Remove(commentNode))
+            {
+                commentNode.Dispose();
+                GraphStateSave();
+                DocumentViewModel?.SetIsDirty(true);
+            }
+            return;
+        }
+
         if (!Nodes.Contains(node))
         {
             return;
@@ -230,6 +242,11 @@ public partial class RedGraph : IDisposable
 
     public void DuplicateNode(NodeViewModel node)
     {
+        if (node is CommentNodeViewModel)
+        {
+            return; // Comment nodes do not support duplication
+        }
+
         if (!Nodes.Contains(node))
         {
             return;
@@ -286,6 +303,24 @@ public partial class RedGraph : IDisposable
         }
     }
 
+    /// <summary>
+    /// Creates an editor-only comment node (no sockets) at the given location.
+    /// Supported for Scene and Quest graphs. Layout is persisted in GraphEditorStates.
+    /// Comment ID follows existing node order (next after max UniqueId in the graph).
+    /// </summary>
+    public CommentNodeViewModel CreateCommentNode(System.Windows.Point location)
+    {
+        var data = new graphGraphCommentDefinition();
+        var maxId = Nodes.Count > 0 ? Nodes.Max(n => n.UniqueId) : 0u;
+        var id = maxId + 1;
+        var vm = new CommentNodeViewModel(data, id, location) { DocumentViewModel = DocumentViewModel };
+        vm.IsInitialLoad = false;
+        Nodes.Add(vm);
+        GraphStateSave();
+        DocumentViewModel?.SetIsDirty(true);
+        return vm;
+    }
+
     public void CenterOnSelectedNodes(IList<object> nodes)
     {
         if (nodes.Count > 0 && Editor != null)
@@ -321,6 +356,10 @@ public partial class RedGraph : IDisposable
 
         foreach (var node in Nodes)
         {
+            if (node is CommentNodeViewModel)
+            {
+                continue; // Comments stay where the user put them; don't include in auto-layout
+            }
             var layoutHeight = node.Size.Height + nodeIdExtraHeight;
             var msaglNode = new Node(CurveFactory.CreateRectangle(node.Size.Width, layoutHeight, new Microsoft.Msagl.Core.Geometry.Point()))
             {
@@ -414,6 +453,40 @@ public partial class RedGraph : IDisposable
                         node.UpdateSocketVisibility();
                     }
 
+                    // Load comment nodes (editor-only, no sockets) into Nodes, in CommentID order
+                    var commentsToken = jsonData.SelectToken("Comments");
+                    if (commentsToken is JArray commentsArray)
+                    {
+                        var orderedComments = commentsArray.OfType<JObject>()
+                            .Select(t => (Token: t, Id: (t.SelectToken("CommentID") as JValue)?.ToObject<uint>() ?? 0u))
+                            .OrderBy(x => x.Id)
+                            .Select(x => x.Token);
+                        foreach (var commentToken in orderedComments)
+                        {
+                            var idVal = commentToken.SelectToken("CommentID") as JValue;
+                            var xVal = commentToken.SelectToken("X") as JValue;
+                            var yVal = commentToken.SelectToken("Y") as JValue;
+                            var textVal = commentToken.SelectToken("Text") as JValue;
+                            var wVal = commentToken.SelectToken("Width") as JValue;
+                            var hVal = commentToken.SelectToken("Height") as JValue;
+                            if (idVal == null || xVal == null || yVal == null) continue;
+                            var id = idVal.ToObject<uint>();
+                            var x = xVal.ToObject<double>();
+                            var y = yVal.ToObject<double>();
+                            var text = textVal?.ToObject<string>() ?? string.Empty;
+                            var w = wVal?.ToObject<double>() ?? 180;
+                            var h = hVal?.ToObject<double>() ?? 60;
+                            _currentCommentNodeId = Math.Max(_currentCommentNodeId, id);
+                            var data = new graphGraphCommentDefinition { Comment = text };
+                            var vm = new CommentNodeViewModel(data, id, new System.Windows.Point(x, y))
+                            {
+                                DocumentViewModel = DocumentViewModel,
+                                Size = new System.Windows.Size(w, h)
+                            };
+                            Nodes.Add(vm);
+                        }
+                    }
+
                     if (Editor != null)
                     {
                         var editorX = jsonData.SelectToken("EditorX") as JValue;
@@ -473,6 +546,10 @@ public partial class RedGraph : IDisposable
                 var jNodes = new JArray();
                 foreach (var node in Nodes)
                 {
+                    if (node is CommentNodeViewModel)
+                    {
+                        continue; // Comments are saved in the Comments array below
+                    }
                     uint nodeID = 0;
                     if (node.Data is scnSceneGraphNode n)
                     {
@@ -492,13 +569,26 @@ public partial class RedGraph : IDisposable
 
                     jNodes.Add(newPerfSet);
                 }
+
+                var jComments = new JArray();
+                foreach (var comment in Nodes.OfType<CommentNodeViewModel>().OrderBy(c => c.UniqueId))
+                {
+                    jComments.Add(new JObject(
+                        new JProperty("CommentID", comment.UniqueId),
+                        new JProperty("X", comment.Location.X),
+                        new JProperty("Y", comment.Location.Y),
+                        new JProperty("Text", comment.CommentText),
+                        new JProperty("Width", comment.Size.Width),
+                        new JProperty("Height", comment.Size.Height)));
+                }
                 
                 var jRoot = new JObject
                 {
                     new JProperty("EditorX", Editor != null ? Editor.ViewportLocation.X : 0),
                     new JProperty("EditorY", Editor != null ? Editor.ViewportLocation.Y : 0),
                     new JProperty("EditorZ", Editor != null ? Editor.ViewportZoom : 0),
-                    new JProperty("Nodes", jNodes)
+                    new JProperty("Nodes", jNodes),
+                    new JProperty("Comments", jComments)
                 };
 
                 File.WriteAllText(statePath, JsonConvert.SerializeObject(jRoot));

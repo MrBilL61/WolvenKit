@@ -4833,11 +4833,17 @@ public partial class ChunkViewModel : ObservableObject, ISelectableTreeViewItemM
     }
 
     /// <summary>
-    /// Notify the property update service for graph synchronization
+    /// Notify the property update service for graph synchronization.
+    /// When a graph node (including comment nodes) is selected, notifies its Data so the graph view updates in real time.
     /// </summary>
     private void NotifyPropertyUpdateForGraphSync()
     {
-        // Find the root node data to notify about
+        var selectedNode = WolvenKit.App.Services.NodeSelectionService.Instance.SelectedNode;
+        if (selectedNode != null && selectedNode.Data is RedBaseClass selectedData)
+        {
+            NodePropertyUpdateService.NotifyPropertyUpdated(selectedData);
+            return;
+        }
         var rootNodeData = GetRootNodeData();
         if (rootNodeData != null)
         {
